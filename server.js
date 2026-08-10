@@ -1,11 +1,20 @@
 const express = require('express');
 const app = express();
 
-// Render assigns a dynamic port via process.env.PORT, default to 10000
 const PORT = process.env.PORT || 10000;
 
 app.use(express.json());
 
+// Add a GET handler so browser visits and health checks don't fail
+app.get('/', (req, res) => {
+  res.status(200).send('Release Gate Service is Live');
+});
+
+app.get('/release-gate', (req, res) => {
+  res.status(200).json({ status: "active", message: "Send a POST request to this endpoint." });
+});
+
+// Your core POST validation endpoint
 app.post('/release-gate', (req, res) => {
   try {
     const body = req.body || {};
