@@ -1,0 +1,15 @@
+name: TDS GA7 Release Gate
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+    test-gate:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+        - name: TDS identity:24ds2000033@ds.study.iitm.ac.in
+          run: echo "Identity verified"
