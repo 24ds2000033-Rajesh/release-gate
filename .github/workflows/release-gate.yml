@@ -5,11 +5,90 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+  packages: write
+  id-token: none
+
 jobs:
-    test-gate:
-      runs-on: ubuntu-latest
-      steps:
-        - name: Checkout code
-          uses: actions/checkout@v4
-        - name: TDS identity:24ds2000033@ds.study.iitm.ac.in
-          run: echo "Identity verified"
+  release-gate:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.12"
+          - "3.13"
+
+    steps:
+      - name: TDS identity: 24ds2000033@ds.study.iitm.ac.in
+        run: echo "24ds2000033@ds.study.iitm.ac.in"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest httpx
+
+      - name: Run release gate tests
+        run: |
+          pytest -q
+
+      - name: Verify endpoint implementation
+        run: |
+          python - <<'PY'
+          from api.index import release_gate
+
+          payload = {
+              "target": "preview",
+              "event": "pull_request",
+              "ref": "refs/heads/feature/test",
+              "workflow": {
+                  "trigger": "pull_request",
+                  "permissions": {
+                      "contents": "read",
+                      "packages": "write",
+                      "id-token": "none"
+                  },
+                  "testsPassed": True,
+                  "matrixComplete": True,
+                  "failFast": False,
+                  "actions": [
+                      {
+                          "owner": "actions",
+                          "name": "checkout",
+                          "ref": "v4"
+                      },
+                      {
+                          "owner": "third-party",
+                          "name": "example",
+                          "ref": "0123456789abcdef0123456789abcdef01234567"
+                      }
+                  ]
+              },
+              "image": {
+                  "multiStage": True,
+                  "runsAsRoot": False,
+                  "secretMode": "buildkit",
+                  "criticalVulnerabilities": 0,
+                  "digestPinned": True
+              }
+          }
+
+          result = release_gate(payload)
+
+          assert result["decision"] == "promote"
+          assert result["violations"] == []
+
+          print("Release gate verification passed.")
+          print(result)
+          PY
